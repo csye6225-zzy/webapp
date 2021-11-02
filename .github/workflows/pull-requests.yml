@@ -8,11 +8,18 @@ env:
   APP_DEPLOY_GROUP_NAME: csye6225-webapp-deployment
 
 on:
-  pull_request:
+  push:
+#  pull_request:
+#    branches:
+#      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: write
+      id-token: write
 
     steps:
       - uses: actions/checkout@v2
@@ -22,7 +29,7 @@ jobs:
           java-version: 8
           distribution: 'adopt'
       - name: Build with Maven
-        run: mvn -B package --file pom.xml
+        run: mvn -B package --file pom.xml -Dmaven.test.skip=true
 
       - name: package
         run: |

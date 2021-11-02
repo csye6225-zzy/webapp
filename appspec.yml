@@ -1,14 +1,15 @@
 version: 0.0
 os: linux
+
 files:
   - source: web.jar
-    destination: /usr/local
+    destination: /usr/local/web
 hooks:
   BeforeInstall:
     - location: codedeploy/beforeInstall.sh
       timeout: 180
       runas: ubuntu
   ApplicationStart:
-    - location: codedeploy/start.sh
+    - location: codedeploy/applicationStart.sh
       timeout: 180
       runas: ubuntu
