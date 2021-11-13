@@ -3,13 +3,11 @@ package com.example.csye6225_zzy.service;
 import com.amazonaws.AmazonServiceException;
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.Protocol;
-import com.amazonaws.auth.AWSCredentials;
-import com.amazonaws.auth.AWSCredentialsProvider;
-import com.amazonaws.auth.AWSStaticCredentialsProvider;
-import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.auth.*;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3Client;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectResult;
 import com.example.csye6225_zzy.pojo.AmazonFileModel;
@@ -24,10 +22,7 @@ import java.util.Date;
 
 @Service
 public class AmazonService {
-    @Value("${custom.aws.accessKey}")
-    private String accessKey;
-    @Value("${custom.aws.accessSecret}")
-    private String accessSecret;
+
     @Value("${custom.aws.bucket}")
     private String bucket;
 
@@ -39,10 +34,9 @@ public class AmazonService {
         configuration.setProtocol(Protocol.HTTP);
         configuration.disableSocketProxy();
 
-        AWSCredentials awsCredentials = new BasicAWSCredentials(accessKey,accessSecret);
-        AWSCredentialsProvider awsCredentialsProvider = new AWSStaticCredentialsProvider(awsCredentials);
-
-        amazonS3 = AmazonS3Client.builder()
+        AWSCredentialsProvider awsCredentialsProvider = new InstanceProfileCredentialsProvider(false);
+        
+        amazonS3 = AmazonS3ClientBuilder.standard()
                 .withClientConfiguration(configuration)
                 .withCredentials(awsCredentialsProvider)
                 .withRegion(Regions.US_EAST_1)
@@ -71,7 +65,7 @@ public class AmazonService {
         }
 
         AmazonFileModel amazonFileModel = new AmazonFileModel ();
-        amazonFileModel.setFileName(originalFileName);
+        amazonFileModel.setFilename(originalFileName);
         amazonFileModel.setUrl(bucket+"/"+uid+"/"+originalFileName);
         amazonFileModel.setID(uid);
         return amazonFileModel ;
