@@ -10,6 +10,10 @@ import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectResult;
+import com.amazonaws.services.sns.AmazonSNS;
+import com.amazonaws.services.sns.AmazonSNSClientBuilder;
+import com.amazonaws.services.sns.model.MessageAttributeValue;
+import com.amazonaws.services.sns.model.PublishRequest;
 import com.example.csye6225_zzy.pojo.AmazonFileModel;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -19,6 +23,8 @@ import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 public class AmazonService {
@@ -26,7 +32,12 @@ public class AmazonService {
     @Value("${custom.aws.bucket}")
     private String bucket;
 
+    @Value("${custom.aws.SNSTopic}")
+    private String SNSTopicArn;
+
     private AmazonS3 amazonS3;
+
+    private AmazonSNS amazonSNS;
 
     @PostConstruct
     public void init(){
@@ -41,6 +52,11 @@ public class AmazonService {
                 .withCredentials(awsCredentialsProvider)
                 .withRegion(Regions.US_EAST_1)
                 .enablePathStyleAccess()
+                .build();
+
+        amazonSNS = AmazonSNSClientBuilder.standard()
+                .withCredentials(awsCredentialsProvider)
+                .withRegion(Regions.US_EAST_1)
                 .build();
 
     }
@@ -78,4 +94,12 @@ public class AmazonService {
             System.out.println(e.getErrorMessage());
         }
     }
+
+    public void publishSNSMessage(String message){
+        amazonSNS.publish(new PublishRequest()
+                .withTopicArn(SNSTopicArn)
+                .withMessage(message)
+        );
+    }
+
 }

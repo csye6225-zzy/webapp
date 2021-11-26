@@ -28,7 +28,7 @@ public class DiyLog {
         Object result = joinPoint.proceed();
         long executeTime2 = System.currentTimeMillis();
         statsDClient.recordExecutionTime(sign,(executeTime2-executeTime1));
-        return result + " \nlocal address: "+EC2MetadataUtils.getPrivateIpAddress();
+        return result;
     }
 
     @Around("execution(* com.example.csye6225_zzy.service.*.*(..))")

@@ -4,9 +4,7 @@ package com.example.csye6225_zzy.controller;
 import com.alibaba.fastjson.JSON;
 import com.example.csye6225_zzy.pojo.AmazonFileModel;
 import com.example.csye6225_zzy.pojo.User;
-import com.example.csye6225_zzy.service.AmazonService;
-import com.example.csye6225_zzy.service.FileService;
-import com.example.csye6225_zzy.service.UserService;
+import com.example.csye6225_zzy.service.*;
 import com.example.csye6225_zzy.utils.JWTUtil;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -33,6 +31,12 @@ public class UserController {
     private UserService userService;
 
     @Autowired
+    private UserService_re userService_re;
+
+    @Autowired
+    private DynamoDBService dynamoDBService;
+
+    @Autowired
     private HttpServletRequest request;
 
     @Autowired
@@ -47,7 +51,10 @@ public class UserController {
     @Autowired
     private FileService fileService;
 
-    private SimpleDateFormat format = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
+    @Autowired
+    private FileService_re fileService_re;
+
+    private SimpleDateFormat format = new SimpleDateFormat("dd-MM-yyyy-HH:mm:ss");
 
 
     @ApiOperation("get user information")
@@ -61,10 +68,15 @@ public class UserController {
         }
 
         String username = JWTUtil.getName(token);
-        User user = userService.selectByName(username);
+        User user = userService_re.selectByName(username);
         if (user==null) {
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
             return "user not found, get default user";
+        }
+
+        if (user.getVerified().equals("false")){
+            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+            return "user not verified";
         }
 
         Map<String,String> RUser = new HashMap<>();
@@ -72,8 +84,9 @@ public class UserController {
         RUser.put("firstname",user.getFirstname());
         RUser.put("lastname",user.getLastname());
         RUser.put("username",user.getUsername());
-        RUser.put("accountCreated",user.getAccountCreated());
-        RUser.put("accountUpdated",user.getAccountUpdated());
+        RUser.put("accountCreated",user.getAccountcreated());
+        RUser.put("accountUpdated",user.getAccountupdated());
+        RUser.put("verifyTime",user.getVerifiedtime());
 
         return JSON.toJSONString(RUser);
     }
@@ -90,10 +103,15 @@ public class UserController {
         }
 
         String username = JWTUtil.getName(token);
-        User user = userService.selectByName(username);
+        User user = userService_re.selectByName(username);
         if (user==null) {
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
             return "user not found, get default user";
+        }
+
+        if (user.getVerified().equals("false")){
+            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+            return "user not verified";
         }
 
         if (!map.get("email").equals(user.getUsername())){
@@ -104,7 +122,7 @@ public class UserController {
         user.setLastname(map.get("lastname"));
         user.setFirstname(map.get("firstname"));
         user.setPassword(bCryptPasswordEncoder.encode(map.get("password")));
-        user.setAccountUpdated(format.format(new Date()));
+        user.setAccountupdated(format.format(new Date()));
 
         userService.updateUser(user);
 
@@ -113,8 +131,9 @@ public class UserController {
         RUser.put("firstname",user.getFirstname());
         RUser.put("lastname",user.getLastname());
         RUser.put("username",user.getUsername());
-        RUser.put("accountCreated",user.getAccountCreated());
-        RUser.put("accountUpdated",user.getAccountUpdated());
+        RUser.put("accountCreated",user.getAccountcreated());
+        RUser.put("accountUpdated",user.getAccountupdated());
+        RUser.put("verifyTime",user.getVerifiedtime());
 
         return JSON.toJSONString(RUser);
     }
@@ -135,10 +154,15 @@ public class UserController {
         }
 
         String username = JWTUtil.getName(token);
-        User user = userService.selectByName(username);
+        User user = userService_re.selectByName(username);
         if (user==null) {
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
             return "user not found";
+        }
+
+        if (user.getVerified().equals("false")){
+            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+            return "user not verified";
         }
 
         String ID = user.getID();
@@ -151,8 +175,8 @@ public class UserController {
             return "error, cannot upload to bucket";
         }
 
-        amazonFileModel.setUploadTime(format.format(new Date()));
-        if (fileService.searchByID(ID)!=null){
+        amazonFileModel.setUploadtime(format.format(new Date()));
+        if (fileService_re.searchByID(ID)!=null){
             fileService.updateFile(amazonFileModel);
         }else {
             fileService.addFile(amazonFileModel);
@@ -173,13 +197,18 @@ public class UserController {
         }
 
         String username = JWTUtil.getName(token);
-        User user = userService.selectByName(username);
+        User user = userService_re.selectByName(username);
         if (user==null) {
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
             return "user not found";
         }
 
-        AmazonFileModel amazonFileModel = fileService.searchByID(user.getID());
+        if (user.getVerified().equals("false")){
+            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+            return "user not verified";
+        }
+
+        AmazonFileModel amazonFileModel = fileService_re.searchByID(user.getID());
         if (amazonFileModel==null){
             return "user profile not found";
         }
@@ -199,10 +228,15 @@ public class UserController {
         }
 
         String username = JWTUtil.getName(token);
-        User user = userService.selectByName(username);
+        User user = userService_re.selectByName(username);
         if (user==null) {
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
             return "user not found";
+        }
+
+        if (user.getVerified().equals("false")){
+            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+            return "user not verified";
         }
 
         try{
@@ -215,6 +249,70 @@ public class UserController {
 
         fileService.deleteFile(user.getID());
         return " deleted";
+    }
+
+    @GetMapping("/v1/user/verify/{username}/{verifyToken}")
+    public String verifyUser(@PathVariable("username") String username,
+                             @PathVariable("verifyToken") String verifyToken){
+        User user = userService_re.selectByName(username);
+        if (user==null) {
+            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+            return "user not found";
+        }
+
+        String token = dynamoDBService.getItem(user.getID());
+        if (token==null){
+            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+            return "not found";
+        }
+
+        if (token.equals("expired")){
+            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+            return "verifyToken expired";
+        }
+
+        if (!token.equals(verifyToken)){
+            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+            return "verifyToken does not match";
+        }
+
+        user.setVerified("true");
+        user.setVerifiedtime(format.format(new Date()));
+
+        userService.updateUser(user);
+        //dynamoDBService.deleteItem(user.getID());
+
+        Map<String,String> RUser = new HashMap<>();
+        RUser.put("ID",user.getID());
+        RUser.put("firstname",user.getFirstname());
+        RUser.put("lastname",user.getLastname());
+        RUser.put("username",user.getUsername());
+        RUser.put("accountCreated",user.getAccountcreated());
+        RUser.put("accountUpdated",user.getAccountupdated());
+        RUser.put("verifyTime",user.getVerifiedtime());
+
+        return JSON.toJSONString(RUser);
+
+    }
+
+    @DeleteMapping(path = "/v1/user/{username}")
+    public String deleteUser(@PathVariable("username") String username){
+        User user = userService_re.selectByName(username);
+        if (user==null) return "user not found";
+
+        String ID = user.getID();
+        userService.deleteUser(ID);
+        if (fileService_re.searchByID(ID)!=null){
+            try{
+                amazonService.delete(ID);
+                fileService.deleteFile(ID);
+            }catch (Exception e){
+                e.printStackTrace();
+                response.setStatus(HttpStatus.BAD_REQUEST.value());
+                return "error, cannot delete";
+            }
+        }
+        return "deleted";
     }
 
 }

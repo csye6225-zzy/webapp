@@ -15,14 +15,13 @@ public class UserService implements UserMapper {
     public void addUser(User user) {
         userMapper.addUser(user);
     }
-
-    @Override
-    public User selectByName(String name) {
-        return userMapper.selectByName(name);
-    }
-
     @Override
     public void updateUser(User user) {
         userMapper.updateUser(user);
+    }
+
+    @Override
+    public void deleteUser(String ID) {
+        userMapper.deleteUser(ID);
     }
 }
